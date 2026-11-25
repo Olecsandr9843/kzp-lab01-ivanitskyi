@@ -11,34 +11,34 @@ import java.util.List;
  *     <li>найменший термін до закінчення придатності;</li>
  *     <li>кількість рецептурних препаратів.</li>
  * </ol>
+ *
+ * <p>Показники 3 і 4 також доступні разом як record {@link ExpiryPrescription}.
  */
 public final class PharmacyStatistics {
     private final int validCount;
     private final double averagePrice;
-    private final int minDaysToExpire;
-    private final int prescriptionCount;
+    private final ExpiryPrescription expiryPrescription;
 
     /**
-     * Обчислює показники за перевіреними записами.
+     * Обчислює показники за списком препаратів.
      *
-     * @param records записи, які вже пройшли {@link MedicineLineParser#parse(String)}
+     * @param medicines коректні препарати; кожен об'єкт уже перевірено конструктором {@link Medicine}
      */
-    public PharmacyStatistics(List<String[]> records) {
+    public PharmacyStatistics(List<Medicine> medicines) {
         double totalPrice = 0.0;
         int minDays = Integer.MAX_VALUE;
         int prescriptions = 0;
-        for (String[] fields : records) {
-            totalPrice += Double.parseDouble(fields[MedicineLineParser.PRICE]);
-            minDays = Math.min(minDays, Integer.parseInt(fields[MedicineLineParser.DAYS_TO_EXPIRE]));
-            if (MedicineLineParser.parsePrescription(fields[MedicineLineParser.PRESCRIPTION])) {
+        for (Medicine medicine : medicines) {
+            totalPrice += medicine.getPrice();
+            minDays = Math.min(minDays, medicine.getDaysToExpire());
+            if (medicine.isPrescription()) {
                 prescriptions++;
             }
         }
-        this.validCount = records.size();
+        this.validCount = medicines.size();
         // Ділимо в double; для порожнього набору повертаємо 0, щоб не отримати NaN.
         this.averagePrice = validCount == 0 ? 0.0 : totalPrice / validCount;
-        this.minDaysToExpire = validCount == 0 ? 0 : minDays;
-        this.prescriptionCount = prescriptions;
+        this.expiryPrescription = new ExpiryPrescription(validCount == 0 ? 0 : minDays, prescriptions);
     }
 
     /**
@@ -65,16 +65,25 @@ public final class PharmacyStatistics {
      * @return мінімум днів; має сенс лише якщо {@link #isEmpty()} повертає {@code false}
      */
     public int minDaysToExpire() {
-        return minDaysToExpire;
+        return expiryPrescription.minDaysToExpire();
     }
 
     /**
      * Повертає кількість рецептурних препаратів.
      *
-     * @return кількість записів із {@code prescription = true}
+     * @return кількість препаратів, для яких потрібен рецепт
      */
     public int prescriptionCount() {
-        return prescriptionCount;
+        return expiryPrescription.prescriptionCount();
+    }
+
+    /**
+     * Повертає підсумок «найменший термін + кількість рецептурних» як незмінне значення.
+     *
+     * @return record із двома показниками
+     */
+    public ExpiryPrescription expiryPrescription() {
+        return expiryPrescription;
     }
 
     /**
