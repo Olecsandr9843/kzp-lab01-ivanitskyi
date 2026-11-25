@@ -24,7 +24,7 @@ public final class Main {
     static final int EXIT_USAGE = 2;
 
     private static final String USAGE = """
-            Використання: java -jar lab01-1.0.0.jar [параметри]
+            Використання: java -jar lab01-1.1.0.jar [параметри]
 
             Параметри:
               --help              показати цю довідку
