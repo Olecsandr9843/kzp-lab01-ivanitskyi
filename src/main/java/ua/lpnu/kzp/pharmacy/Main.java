@@ -16,6 +16,9 @@ public final class Main {
     /** Файл звіту за замовчуванням (відносно поточного каталогу). */
     static final Path DEFAULT_OUTPUT = Path.of("out", "report.txt");
 
+    /** Скільки елементів показувати в рейтингах розділу {@code --queries}. */
+    static final int TOP_N = 5;
+
     /** Код завершення: успіх. */
     static final int EXIT_OK = 0;
     /** Код завершення: помилка читання або запису файла. */
@@ -24,7 +27,7 @@ public final class Main {
     static final int EXIT_USAGE = 2;
 
     private static final String USAGE = """
-            Використання: java -jar lab01-1.2.0.jar [параметри]
+            Використання: java -jar lab01-1.3.0.jar [параметри]
 
             Параметри:
               --help              показати цю довідку
@@ -32,6 +35,8 @@ public final class Main {
               --input <файл>      вхідний CSV (типово data/input.csv)
               --output <файл>     файл звіту (типово out/report.txt)
               --details           додати перелік препаратів з оцінкою доступності
+              --queries           додати результати запитів Stream API (фільтр, групування, топ-5…)
+              --find <назва>      знайти препарат за назвою
 
             Формат рядка CSV (UTF-8, роздільник ;):
               name;form;price;daysToExpire;prescription
@@ -46,7 +51,8 @@ public final class Main {
      * Точка входу до програми.
      *
      * @param args аргументи командного рядка: {@code --help}, {@code --version},
-     *             {@code --input <файл>}, {@code --output <файл>}, {@code --details}
+     *             {@code --input <файл>}, {@code --output <файл>}, {@code --details},
+     *             {@code --queries}, {@code --find <назва>}
      */
     public static void main(String[] args) {
         int exitCode = run(args, System.out, System.err);
@@ -75,6 +81,8 @@ public final class Main {
         Path input = DEFAULT_INPUT;
         Path output = DEFAULT_OUTPUT;
         boolean details = false;
+        boolean queries = false;
+        String find = null;
         try {
             for (int i = 0; i < args.length; i++) {
                 switch (args[i]) {
@@ -82,9 +90,11 @@ public final class Main {
                         out.print(USAGE.replace("\n", System.lineSeparator()));
                         return EXIT_OK;
                     }
-                    case "--input" -> input = Path.of(requireValue(args, ++i, "--input"));
-                    case "--output" -> output = Path.of(requireValue(args, ++i, "--output"));
+                    case "--input" -> input = Path.of(requireValue(args, ++i, "--input", "шлях до файла"));
+                    case "--output" -> output = Path.of(requireValue(args, ++i, "--output", "шлях до файла"));
                     case "--details" -> details = true;
+                    case "--queries" -> queries = true;
+                    case "--find" -> find = requireValue(args, ++i, "--find", "назву препарату");
                     default -> throw new IllegalArgumentException("невідомий параметр " + args[i]);
                 }
             }
@@ -105,8 +115,15 @@ public final class Main {
             ProcessingResult result = RecordProcessor.process(lines);
             PharmacyStatistics statistics = new PharmacyStatistics(result.validRecords());
             String report = ReportFormatter.format(input.toString(), statistics, result.errors());
+            List<Medicine> medicines = result.validRecords();
             if (details) {
-                report += ReportFormatter.formatDetails(result.validRecords());
+                report += ReportFormatter.formatDetails(medicines);
+            }
+            if (queries) {
+                report += ReportFormatter.formatQueries(medicines, TOP_N);
+            }
+            if (find != null) {
+                report += ReportFormatter.formatSearch(find, MedicineQueries.findByName(medicines, find));
             }
 
             out.print(report);
@@ -122,9 +139,9 @@ public final class Main {
     }
 
     /* Повертає значення параметра або повідомляє, що воно відсутнє. */
-    private static String requireValue(String[] args, int index, String option) {
+    private static String requireValue(String[] args, int index, String option, String what) {
         if (index >= args.length || args[index].isBlank()) {
-            throw new IllegalArgumentException("після %s потрібно вказати шлях до файла".formatted(option));
+            throw new IllegalArgumentException("після %s потрібно вказати %s".formatted(option, what));
         }
         return args[index];
     }
