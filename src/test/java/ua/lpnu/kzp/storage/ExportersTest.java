@@ -189,6 +189,7 @@ class ExportersTest {
     @Test
     void annotatedFieldsAreCachedPerClass() throws DataStorageException {
         assertTrue(AnnotatedFields.of(Book.class) == AnnotatedFields.of(Book.class));
-        assertEquals(AnnotatedFields.of(Book.class), AnnotatedFields.scan(Book.class));
+        assertEquals(AnnotatedFields.of(Book.class), AnnotatedFields.scan(Book.class).fields());
+        assertTrue(AnnotatedFields.scan(Book.class).inaccessible().isEmpty());
     }
 }
