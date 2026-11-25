@@ -9,7 +9,7 @@
 - Номер варіанта: 11
 - Виконавець: Іваницький
 - Операційна система: Windows (CI додатково перевіряє Ubuntu та macOS)
-- Репозиторій: {{REPO_URL}}
+- Репозиторій: https://github.com/Olecsandr9843/kzp-lab01-ivanitskyi
 
 ## 2. Мета роботи
 
@@ -87,9 +87,15 @@ args → Main → FileReport.readLines → RecordProcessor.process
 
 | Issue | Мітка | Зміна | PR |
 |-------|-------|-------|----|
-{{ISSUES_TABLE}}
+| [#1](https://github.com/Olecsandr9843/kzp-lab01-ivanitskyi/issues/1) | infra | README, REPORT, службові файли, форми Issues і шаблон PR | 69346d0 (main) |
+| [#2](https://github.com/Olecsandr9843/kzp-lab01-ivanitskyi/issues/2) | infra | pom.xml, Maven Wrapper, JUnit 5, BuildInfo/--version | f1c4565, PR #8 |
+| [#3](https://github.com/Olecsandr9843/kzp-lab01-ivanitskyi/issues/3) | infra | SpotBugs у verify, shade-плагін, виконуваний JAR | f1c4565, PR #8 |
+| [#4](https://github.com/Olecsandr9843/kzp-lab01-ivanitskyi/issues/4) | infra | workflow CI на 3 ОС, артефакти JAR | f1c4565, PR #8 |
+| [#5](https://github.com/Olecsandr9843/kzp-lab01-ivanitskyi/issues/5) | feature | MedicineLineParser, RecordProcessor, ProcessingResult + тести | 45503dc, PR #8 |
+| [#6](https://github.com/Olecsandr9843/kzp-lab01-ivanitskyi/issues/6) | feature | PharmacyStatistics, ReportFormatter, FileReport, Main + тести | 10db334, PR #8 |
+| [#7](https://github.com/Olecsandr9843/kzp-lab01-ivanitskyi/issues/7) | docs | README, REPORT, javadoc, ролі ai/ | 7e76a75, PR #8 |
 
-Pull Request: {{PR_URL}}
+Pull Request: [#8](https://github.com/Olecsandr9843/kzp-lab01-ivanitskyi/pull/8) — `lab01 → main`, закриває #1–#7
 
 ## 7. Приклади роботи
 
@@ -152,11 +158,11 @@ Pull Request: {{PR_URL}}
 
 Результат: 25 тестів, 0 помилок; SpotBugs — 0 знахідок.
 
-CI: {{CI_URL}}
+CI: [запуск №1](https://github.com/Olecsandr9843/kzp-lab01-ivanitskyi/actions/runs/45600973096) — `verify` успішний на ubuntu-latest, windows-latest, macos-latest
 
-Артефакти JAR: {{ARTIFACT_URL}}
+Артефакти JAR: `jar-ubuntu-latest-1`, `jar-windows-latest-1`, `jar-macos-latest-1` на [сторінці запуску](https://github.com/Olecsandr9843/kzp-lab01-ivanitskyi/actions/runs/45600973096)
 
-Запуск на трьох ОС (крок «Smoke test JAR» у CI): {{SMOKE_RESULTS}}
+Запуск на трьох ОС (крок «Smoke test JAR» у CI): на всіх трьох ОС `--version` вивів `1.0.0+1`, а звіт збігся з локальним (4 коректні записи, 86.00 грн, 45 дн., 2 рецептурні). Версія в `pom.xml` — `1.0.0`, Git-тег — `v1.0.0`.
 
 ## 9. Документація
 
