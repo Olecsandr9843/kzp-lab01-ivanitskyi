@@ -1,44 +1,35 @@
 package ua.lpnu.kzp.pharmacy;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Результат обробки вхідного файла: коректні записи та повідомлення про пропущені рядки.
+ * Результат обробки вхідного файла: коректні препарати та повідомлення про пропущені рядки.
  *
- * <p>Клас незмінний: списки копіюються під час створення й повертаються лише для читання.
+ * <p>Клас незмінний: списки копіюються під час створення через {@link List#copyOf}. Оскільки
+ * {@link Medicine} сам незмінний, копіювати окремі об'єкти (як масиви в ЛР1) уже не потрібно.
  */
 public final class ProcessingResult {
-    private final List<String[]> validRecords;
+    private final List<Medicine> medicines;
     private final List<String> errors;
 
     /**
      * Створює результат обробки.
      *
-     * @param validRecords перевірені записи, кожен — масив полів
-     * @param errors       повідомлення про пропущені рядки у форматі «Рядок N: причина»
+     * @param medicines коректні препарати в порядку появи у файлі
+     * @param errors    повідомлення про пропущені рядки у форматі «Рядок N: причина»
      */
-    public ProcessingResult(List<String[]> validRecords, List<String> errors) {
-        List<String[]> copy = new ArrayList<>(validRecords.size());
-        for (String[] fields : validRecords) {
-            // Масив змінний, тому зберігаємо його копію, а не посилання на чужий об'єкт.
-            copy.add(fields.clone());
-        }
-        this.validRecords = List.copyOf(copy);
+    public ProcessingResult(List<Medicine> medicines, List<String> errors) {
+        this.medicines = List.copyOf(medicines);
         this.errors = List.copyOf(errors);
     }
 
     /**
-     * Повертає копії коректних записів.
+     * Повертає коректні препарати.
      *
-     * @return список масивів полів у порядку появи у файлі
+     * @return незмінний список у порядку появи у файлі
      */
-    public List<String[]> validRecords() {
-        List<String[]> copy = new ArrayList<>(validRecords.size());
-        for (String[] fields : validRecords) {
-            copy.add(fields.clone());
-        }
-        return copy;
+    public List<Medicine> validRecords() {
+        return medicines;
     }
 
     /**

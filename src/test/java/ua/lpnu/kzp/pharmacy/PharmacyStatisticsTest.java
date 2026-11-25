@@ -7,20 +7,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Перевіряє чотири показники варіанта на відомих наборах даних. */
+/**
+ * Перевіряє чотири показники варіанта на відомих наборах даних.
+ *
+ * <p>Тести перенесено з ЛР1: ті самі рядки та очікувані значення; замість {@code List<String[]>}
+ * тепер {@code List<Medicine>}, створений через {@link Medicine#fromCsv(String)}.
+ */
 class PharmacyStatisticsTest {
     private static final double DELTA = 1e-9;
 
-    /* Набір підібрано так, щоб середнє не було цілим: це ловить помилку цілочисельного ділення. */
     @Test
     void computesAllFourIndicators() {
-        List<String[]> records = List.of(
-                MedicineLineParser.parse("Парацетамол;таблетки;45.50;365;false"),
-                MedicineLineParser.parse("Амоксицилін;капсули;128.90;180;true"),
-                MedicineLineParser.parse("Ібупрофен;суспензія;96.00;90;false"),
-                MedicineLineParser.parse("Еналаприл;таблетки;73.60;45;true"));
+        List<Medicine> medicines = List.of(
+                Medicine.fromCsv("Парацетамол;таблетки;45.50;365;false"),
+                Medicine.fromCsv("Амоксицилін;капсули;128.90;180;true"),
+                Medicine.fromCsv("Ібупрофен;суспензія;96.00;90;false"),
+                Medicine.fromCsv("Еналаприл;таблетки;73.60;45;true"));
 
-        PharmacyStatistics statistics = new PharmacyStatistics(records);
+        PharmacyStatistics statistics = new PharmacyStatistics(medicines);
 
         assertEquals(4, statistics.validCount());
         assertEquals(86.0, statistics.averagePrice(), DELTA);
@@ -29,26 +33,26 @@ class PharmacyStatisticsTest {
         assertFalse(statistics.isEmpty());
     }
 
+    /* Набір із дробовим середнім ловить помилку цілочисельного ділення. */
     @Test
     void averageUsesFractionalDivision() {
-        List<String[]> records = List.of(
-                MedicineLineParser.parse("А;таблетки;1;10;false"),
-                MedicineLineParser.parse("Б;таблетки;2;20;false"));
+        List<Medicine> medicines = List.of(
+                new Medicine("А", "таблетки", 1, 10, false),
+                new Medicine("Б", "таблетки", 2, 20, false));
 
-        assertEquals(1.5, new PharmacyStatistics(records).averagePrice(), DELTA);
+        assertEquals(1.5, new PharmacyStatistics(medicines).averagePrice(), DELTA);
     }
 
     @Test
     void singleRecordIsBothMinimumAndAverage() {
         PharmacyStatistics statistics = new PharmacyStatistics(
-                List.<String[]>of(MedicineLineParser.parse("Зразок;мазь;19.99;7;true")));
+                List.of(Medicine.fromCsv("Зразок;мазь;19.99;7;true")));
 
         assertEquals(19.99, statistics.averagePrice(), DELTA);
         assertEquals(7, statistics.minDaysToExpire());
         assertEquals(1, statistics.prescriptionCount());
     }
 
-    /* Порожній набір не дає NaN і не кидає винятків. */
     @Test
     void emptyInputGivesZeroes() {
         PharmacyStatistics statistics = new PharmacyStatistics(List.of());
@@ -57,5 +61,15 @@ class PharmacyStatisticsTest {
         assertEquals(0, statistics.validCount());
         assertEquals(0.0, statistics.averagePrice(), DELTA);
         assertEquals(0, statistics.prescriptionCount());
+    }
+
+    /* Показники 3 і 4 доступні разом як record. */
+    @Test
+    void exposesExpiryPrescriptionRecord() {
+        PharmacyStatistics statistics = new PharmacyStatistics(List.of(
+                new Medicine("А", "таблетки", 10, 30, true),
+                new Medicine("Б", "сироп", 20, 12, false)));
+
+        assertEquals(new ExpiryPrescription(12, 1), statistics.expiryPrescription());
     }
 }
