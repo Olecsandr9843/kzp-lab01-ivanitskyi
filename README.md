@@ -1,7 +1,7 @@
 # Аптека — консольний звіт
 
-Лабораторні роботи № 1–3 з курсу «Кросплатформні засоби програмування», варіант 11.
-Поточна версія — **1.2.0** (ЛР3). Звіти: [REPORT.md](REPORT.md) (ЛР3), [docs/REPORT-lab02.md](docs/REPORT-lab02.md) (ЛР2), [docs/REPORT-lab01.md](docs/REPORT-lab01.md) (ЛР1).
+Лабораторні роботи № 1–4 з курсу «Кросплатформні засоби програмування», варіант 11.
+Поточна версія — **1.3.0** (ЛР4). Звіти: [REPORT.md](REPORT.md) (ЛР4), [docs/REPORT-lab03.md](docs/REPORT-lab03.md) (ЛР3), [docs/REPORT-lab02.md](docs/REPORT-lab02.md) (ЛР2), [docs/REPORT-lab01.md](docs/REPORT-lab01.md) (ЛР1).
 Автор: Іваницький.
 
 ## Призначення
@@ -52,17 +52,17 @@ Windows (cmd або PowerShell):
 
 ```text
 mvnw.cmd verify
-java -jar target\lab01-1.2.0.jar --version
-java -jar target\lab01-1.2.0.jar
-java -jar target\lab01-1.2.0.jar --input data\input.csv --output out\report.txt
+java -jar target\lab01-1.3.0.jar --version
+java -jar target\lab01-1.3.0.jar
+java -jar target\lab01-1.3.0.jar --input data\input.csv --output out\report.txt
 ```
 
 macOS / Ubuntu:
 
 ```text
 ./mvnw verify
-java -jar target/lab01-1.2.0.jar --version
-java -jar target/lab01-1.2.0.jar
+java -jar target/lab01-1.3.0.jar --version
+java -jar target/lab01-1.3.0.jar
 ```
 
 `verify` компілює код, запускає тести JUnit 5, збирає виконуваний JAR і перевіряє байт-код
@@ -73,7 +73,7 @@ java -jar target/lab01-1.2.0.jar
 | Параметр          | Значення                                            |
 |-------------------|-----------------------------------------------------|
 | `--help`, `-h`    | довідка                                             |
-| `--version`       | версія та номер збірки (`1.2.0+local` або `1.2.0+42`) |
+| `--version`       | версія та номер збірки (`1.3.0+local` або `1.3.0+42`) |
 | `--input <файл>`  | вхідний CSV, типово `data/input.csv`                |
 | `--output <файл>` | файл звіту, типово `out/report.txt`                 |
 
@@ -86,7 +86,7 @@ java -jar target/lab01-1.2.0.jar
 
 ```text
 chcp 65001
-java -jar target\lab01-1.2.0.jar
+java -jar target\lab01-1.3.0.jar
 ```
 
 ## Приклад
@@ -148,6 +148,29 @@ java -jar target\lab01-1.2.0.jar
 Середня оцінка доступності: 72.00
 ```
 
+## Запити Stream API (`--queries`, `--find`)
+
+Клас `MedicineQueries` містить п'ять запитів і пошук. Кожен з них — окремий конвеєр без
+побічних ефектів.
+
+| Запит | Конвеєр | Результат |
+|-------|---------|-----------|
+| `expiringSoon` | `filter(days ≤ 30)` → `toList` | `List<Medicine>` |
+| `names` | `map(getName)` → `distinct` → `toList` | `List<String>` |
+| `countByForm` | `groupingBy(getForm, TreeMap::new, counting())` | `Map<String, Long>` |
+| `countByKindAndForm` | `groupingBy(getKind, groupingBy(getForm, counting()))` | `Map<MedicineKind, Map<String, Long>>` |
+| `priceStatistics` | `summarizingDouble(getPrice)` | `DoubleSummaryStatistics` |
+| `topNearestExpiry(n)` | `sorted(термін ↑, назва ↑)` → `limit(n)` | `List<Medicine>` |
+| `topByAvailability(n)` | `sorted(оцінка ↓ reversed, назва ↑)` → `limit(n)` | `List<Medicine>` |
+| `findByName` | `filter(назва без регістру)` → `findFirst` | `Optional<Medicine>` |
+
+Контрольний набір для запитів — `data/pharmacy-full.csv` (13 препаратів). Файл `data/input.csv`
+не змінюється, бо від нього залежить порівняння з контрольним звітом ЛР1.
+
+```text
+java -jar target/lab01-1.3.0.jar --input data/pharmacy-full.csv --queries --find Назол
+```
+
 ## Структура
 
 ```text
@@ -161,11 +184,13 @@ src/main/java/ua/lpnu/kzp/pharmacy/
   ExpiryPrescription.java  — record підсумку (ЛР2)
   ProcessingResult.java    — коректні препарати + помилки
   PharmacyStatistics.java  — чотири показники варіанта
-  ReportFormatter.java     — текст звіту та розділ --details (Locale.ROOT, %n)
+  MedicineQueries.java     — запити Stream API та пошук Optional (ЛР4)
+  ReportFormatter.java     — текст звіту, розділи --details/--queries/--find (Locale.ROOT, %n)
   BuildInfo.java           — версія з version.properties
 src/test/java/...          — тести JUnit 5
 src/test/resources/lab01-baseline-report.txt — контрольний звіт ЛР1
-data/input.csv             — приклад вхідних даних
+data/input.csv             — приклад вхідних даних (контрольний для звіту)
+data/pharmacy-full.csv     — контрольний набір для запитів ЛР4
 docs/                      — звіти попередніх робіт
 ai/                        — ролі ШІ-агентів
 .github/                   — CI, шаблони Issue та PR
