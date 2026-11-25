@@ -1,0 +1,11 @@
+# Нормалізуємо завершення рядків у текстових файлах.
+* text=auto eol=lf
+# cmd.exe некоректно виконує .cmd/.bat із LF, тому для них лишаємо CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+# Unix-скрипт Wrapper має завжди мати LF, інакше sh не запуститься.
+mvnw text eol=lf
+# Бінарні файли не порівнюємо як текст.
+*.jar binary
+*.png binary
+*.jpg binary
