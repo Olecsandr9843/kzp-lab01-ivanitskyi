@@ -1,0 +1,62 @@
+# Один workflow перевіряє однаковий commit на трьох операційних системах.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify (${{ matrix.os }})
+    strategy:
+      # Падіння на одній ОС не скасовує перевірку на інших — так видно всі проблеми одразу.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      # Отримуємо код commit або Pull Request.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Встановлюємо однаковий JDK 21 і кешуємо залежності Maven.
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # verify = компіляція → тести → пакування JAR → SpotBugs.
+      # Номер запуску потрапляє до version.properties і виводу --version.
+      - name: Verify on Unix
+        if: runner.os != 'Windows'
+        run: ./mvnw -B verify "-Dbuild.number=${{ github.run_number }}"
+
+      # На Windows використовується окремий cmd-скрипт Wrapper.
+      # Лапки не дають PowerShell розбити аргумент -D на частини.
+      - name: Verify on Windows
+        if: runner.os == 'Windows'
+        run: .\mvnw.cmd -B verify "-Dbuild.number=${{ github.run_number }}"
+
+      # Перевіряємо, що зібраний JAR справді запускається на цій ОС.
+      - name: Smoke test JAR
+        shell: bash
+        run: |
+          java -jar target/lab01-*.jar --version
+          java -Dstdout.encoding=UTF-8 -jar target/lab01-*.jar --input data/input.csv --output out/report.txt
+
+      # Кожна ОС отримує власний артефакт, щоб результати не перезаписувалися.
+      - name: Upload JAR
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jar-${{ matrix.os }}-${{ github.run_number }}
+          path: target/lab01-*.jar
+          if-no-files-found: error
