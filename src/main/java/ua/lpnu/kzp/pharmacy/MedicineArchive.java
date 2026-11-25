@@ -55,8 +55,9 @@ public final class MedicineArchive {
      */
     public static String export(List<Medicine> medicines, Path path, LocalDate today) throws DataStorageException {
         List<MedicineRecord> records = toRecords(medicines, today);
-        boolean json = path.getFileName() != null
-                && path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".json");
+        // getFileName() може повернути null (корінь файлової системи), тому викликаємо його один раз.
+        Path fileName = path.getFileName();
+        boolean json = fileName != null && fileName.toString().toLowerCase(Locale.ROOT).endsWith(".json");
         Exporter<MedicineRecord> exporter = json
                 ? new JsonExporter<>(MedicineRecord.class)
                 : new CsvExporter<>(MedicineRecord.class);
