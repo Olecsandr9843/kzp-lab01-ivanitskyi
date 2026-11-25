@@ -37,8 +37,8 @@ class PharmacyStatisticsTest {
     @Test
     void averageUsesFractionalDivision() {
         List<Medicine> medicines = List.of(
-                new Medicine("А", "таблетки", 1, 10, false),
-                new Medicine("Б", "таблетки", 2, 20, false));
+                Medicine.of("А", "таблетки", 1, 10, false),
+                Medicine.of("Б", "таблетки", 2, 20, false));
 
         assertEquals(1.5, new PharmacyStatistics(medicines).averagePrice(), DELTA);
     }
@@ -67,8 +67,8 @@ class PharmacyStatisticsTest {
     @Test
     void exposesExpiryPrescriptionRecord() {
         PharmacyStatistics statistics = new PharmacyStatistics(List.of(
-                new Medicine("А", "таблетки", 10, 30, true),
-                new Medicine("Б", "сироп", 20, 12, false)));
+                Medicine.of("А", "таблетки", 10, 30, true),
+                Medicine.of("Б", "сироп", 20, 12, false)));
 
         assertEquals(new ExpiryPrescription(12, 1), statistics.expiryPrescription());
     }

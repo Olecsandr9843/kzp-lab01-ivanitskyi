@@ -16,12 +16,12 @@ import org.junit.jupiter.api.Test;
 class MedicineTest {
     private static final double DELTA = 1e-9;
 
-    // ---------- Конструктор ----------
+    // ---------- Конструктор (через Medicine.of: абстрактний клас не створюється напряму) ----------
 
     @Test
     void constructorCreatesValidMedicine() {
         // Arrange + Act
-        Medicine medicine = new Medicine("Парацетамол", "таблетки", 45.5, 365, false);
+        Medicine medicine = Medicine.of("Парацетамол", "таблетки", 45.5, 365, false);
 
         // Assert
         assertEquals("Парацетамол", medicine.getName());
@@ -34,7 +34,7 @@ class MedicineTest {
     /* Межові значення 0 для ціни й терміну допустимі. */
     @Test
     void constructorAcceptsZeroPriceAndZeroDays() {
-        Medicine medicine = new Medicine("Зразок", "таблетки", 0.0, 0, true);
+        Medicine medicine = Medicine.of("Зразок", "таблетки", 0.0, 0, true);
 
         assertEquals(0.0, medicine.getPrice(), DELTA);
         assertEquals(0, medicine.getDaysToExpire());
@@ -43,16 +43,16 @@ class MedicineTest {
 
     @Test
     void constructorRejectsNullText() {
-        assertThrows(NullPointerException.class, () -> new Medicine(null, "таблетки", 1.0, 1, false));
-        assertThrows(NullPointerException.class, () -> new Medicine("Назва", null, 1.0, 1, false));
+        assertThrows(NullPointerException.class, () -> Medicine.of(null, "таблетки", 1.0, 1, false));
+        assertThrows(NullPointerException.class, () -> Medicine.of("Назва", null, 1.0, 1, false));
     }
 
     @Test
     void constructorRejectsBlankText() {
         IllegalArgumentException name = assertThrows(IllegalArgumentException.class,
-                () -> new Medicine("  ", "таблетки", 1.0, 1, false));
+                () -> Medicine.of("  ", "таблетки", 1.0, 1, false));
         IllegalArgumentException form = assertThrows(IllegalArgumentException.class,
-                () -> new Medicine("Назва", "", 1.0, 1, false));
+                () -> Medicine.of("Назва", "", 1.0, 1, false));
 
         assertEquals("порожнє поле «назва препарату»", name.getMessage());
         assertEquals("порожнє поле «форма випуску»", form.getMessage());
@@ -61,9 +61,9 @@ class MedicineTest {
     @Test
     void constructorRejectsNegativeValues() {
         IllegalArgumentException price = assertThrows(IllegalArgumentException.class,
-                () -> new Medicine("Назва", "таблетки", -0.01, 1, false));
+                () -> Medicine.of("Назва", "таблетки", -0.01, 1, false));
         IllegalArgumentException days = assertThrows(IllegalArgumentException.class,
-                () -> new Medicine("Назва", "таблетки", 1.0, -1, false));
+                () -> Medicine.of("Назва", "таблетки", 1.0, -1, false));
 
         assertEquals("від'ємна ціна -0.01", price.getMessage());
         assertEquals("від'ємний термін придатності -1", days.getMessage());
@@ -72,14 +72,14 @@ class MedicineTest {
     /* NaN не можна відкинути перевіркою price < 0, бо будь-яке порівняння з NaN дає false. */
     @Test
     void constructorRejectsNonFinitePrice() {
-        assertThrows(IllegalArgumentException.class, () -> new Medicine("Назва", "таблетки", Double.NaN, 1, false));
+        assertThrows(IllegalArgumentException.class, () -> Medicine.of("Назва", "таблетки", Double.NaN, 1, false));
         assertThrows(IllegalArgumentException.class,
-                () -> new Medicine("Назва", "таблетки", Double.POSITIVE_INFINITY, 1, false));
+                () -> Medicine.of("Назва", "таблетки", Double.POSITIVE_INFINITY, 1, false));
     }
 
     @Test
     void toStringUsesDotRegardlessOfLocale() {
-        Medicine medicine = new Medicine("Амоксицилін", "капсули", 128.9, 180, true);
+        Medicine medicine = Medicine.of("Амоксицилін", "капсули", 128.9, 180, true);
 
         assertEquals("Амоксицилін (капсули): 128.90 грн, 180 дн., за рецептом", medicine.toString());
     }

@@ -56,6 +56,6 @@ class RecordProcessorTest {
         ProcessingResult result = RecordProcessor.process(List.of("Парацетамол;таблетки;45.50;365;false"));
 
         assertThrows(UnsupportedOperationException.class,
-                () -> result.validRecords().add(new Medicine("Х", "Х", 1, 1, false)));
+                () -> result.validRecords().add(Medicine.of("Х", "Х", 1, 1, false)));
     }
 }
