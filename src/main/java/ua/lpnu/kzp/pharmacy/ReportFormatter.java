@@ -1,9 +1,12 @@
 package ua.lpnu.kzp.pharmacy;
 
+import java.util.DoubleSummaryStatistics;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /** Формує текст звіту, однаковий для консолі та файла. */
 public final class ReportFormatter {
@@ -53,20 +56,90 @@ public final class ReportFormatter {
      * @return текст розділу, кожен рядок завершується {@code %n}
      */
     public static String formatDetails(List<Medicine> medicines) {
-        StringBuilder details = new StringBuilder();
-        details.append(String.format(Locale.ROOT, "Асортимент:%n"));
-        int totalScore = 0;
-        for (Medicine medicine : medicines) {
-            int score = medicine.availabilityScore();
-            totalScore += score;
-            details.append(String.format(Locale.ROOT, "  %s — доступність %d/%d%n",
-                    medicine, score, Medicine.MAX_SCORE));
-        }
+        // ЛР4: цикл замінено двома конвеєрами — рядки переліку і сума оцінок.
+        String lines = medicines.stream()
+                .map(medicine -> line("  %s — доступність %d/%d", medicine, medicine.availabilityScore(),
+                        Medicine.MAX_SCORE))
+                .collect(Collectors.joining());
         // HashSet покладається на equals/hashCode: однаковий препарат у кількох рядках рахується один раз.
-        Set<Medicine> unique = new HashSet<>(medicines);
-        double averageScore = medicines.isEmpty() ? 0.0 : (double) totalScore / medicines.size();
-        details.append(String.format(Locale.ROOT, "Унікальних препаратів: %d%n", unique.size()));
-        details.append(String.format(Locale.ROOT, "Середня оцінка доступності: %.2f%n", averageScore));
-        return details.toString();
+        int unique = new HashSet<>(medicines).size();
+        double averageScore = medicines.stream()
+                .mapToInt(Medicine::availabilityScore)
+                .average()
+                .orElse(0.0);
+        return line("Асортимент:")
+                + lines
+                + line("Унікальних препаратів: %d", unique)
+                + line("Середня оцінка доступності: %.2f", averageScore);
+    }
+
+    /**
+     * Будує розділ із результатами п'яти запитів Stream API (параметр {@code --queries}).
+     *
+     * <p>Обчислення виконує {@link MedicineQueries}; тут лише перетворення результатів на текст.
+     *
+     * @param medicines коректні препарати
+     * @param topN      скільки елементів показувати в рейтингах
+     * @return текст розділу, кожен рядок завершується {@code %n}
+     */
+    public static String formatQueries(List<Medicine> medicines, int topN) {
+        List<Medicine> expiring = MedicineQueries.expiringSoon(medicines);
+        DoubleSummaryStatistics prices = MedicineQueries.priceStatistics(medicines);
+        StringBuilder text = new StringBuilder(line("Запити Stream API:"));
+        text.append(line("1. Термін придатності ≤ %d дн.: %d", MedicineQueries.EXPIRY_THRESHOLD_DAYS,
+                expiring.size()));
+        text.append(numbered(expiring));
+        text.append(line("2. Назви: %s", String.join(", ", MedicineQueries.names(medicines))));
+        text.append(line("3. Кількість за формою: %s", joinMap(MedicineQueries.countByForm(medicines))));
+        MedicineQueries.countByKindAndForm(medicines).forEach((kind, byForm) ->
+                text.append(line("   %s: %s", kind.label(), joinMap(byForm))));
+        if (prices.getCount() == 0) {
+            text.append(line("4. Статистика цін: немає даних"));
+        } else {
+            text.append(line("4. Статистика цін: кількість %d, сума %.2f, середня %.2f, мін %.2f, макс %.2f грн",
+                    prices.getCount(), prices.getSum(), prices.getAverage(), prices.getMin(), prices.getMax()));
+        }
+        text.append(line("5. Топ-%d за найближчим терміном придатності:", topN));
+        text.append(numbered(MedicineQueries.topNearestExpiry(medicines, topN)));
+        text.append(line("   Топ-%d за доступністю:", topN));
+        text.append(numbered(MedicineQueries.topByAvailability(medicines, topN)));
+        return text.toString();
+    }
+
+    /**
+     * Форматує результат пошуку за назвою (параметр {@code --find}).
+     *
+     * @param name   назва, яку шукали
+     * @param result результат {@link MedicineQueries#findByName(List, String)}
+     * @return один рядок: знайдений препарат або повідомлення про відсутність
+     */
+    public static String formatSearch(String name, Optional<Medicine> result) {
+        return result
+                .map(medicine -> line("Пошук «%s»: %s", name.strip(), medicine))
+                .orElseGet(() -> line("Пошук «%s»: не знайдено", name.strip()));
+    }
+
+    /* Нумерований перелік препаратів із відступом; порожній рядок, якщо список порожній. */
+    private static String numbered(List<Medicine> medicines) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < medicines.size(); i++) {
+            text.append(line("   %d) %s", i + 1, medicines.get(i)));
+        }
+        return text.toString();
+    }
+
+    /* «ключ=значення, …» у порядку ітерації карти. */
+    private static String joinMap(Map<String, Long> map) {
+        if (map.isEmpty()) {
+            return "немає даних";
+        }
+        return map.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining(", "));
+    }
+
+    /* Один рядок звіту з Locale.ROOT і платформним роздільником рядків. */
+    private static String line(String format, Object... args) {
+        return String.format(Locale.ROOT, format + "%n", args);
     }
 }

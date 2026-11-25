@@ -1,5 +1,6 @@
 package ua.lpnu.kzp.pharmacy;
 
+import java.util.DoubleSummaryStatistics;
 import java.util.List;
 
 /**
@@ -25,20 +26,20 @@ public final class PharmacyStatistics {
      * @param medicines коректні препарати; кожен об'єкт уже перевірено конструктором {@link Medicine}
      */
     public PharmacyStatistics(List<Medicine> medicines) {
-        double totalPrice = 0.0;
-        int minDays = Integer.MAX_VALUE;
-        int prescriptions = 0;
-        for (Medicine medicine : medicines) {
-            totalPrice += medicine.getPrice();
-            minDays = Math.min(minDays, medicine.getDaysToExpire());
-            if (medicine.isPrescription()) {
-                prescriptions++;
-            }
-        }
-        this.validCount = medicines.size();
-        // Ділимо в double; для порожнього набору повертаємо 0, щоб не отримати NaN.
-        this.averagePrice = validCount == 0 ? 0.0 : totalPrice / validCount;
-        this.expiryPrescription = new ExpiryPrescription(validCount == 0 ? 0 : minDays, prescriptions);
+        // ЛР4: цикл замінено потоками. Статистика цін рахується одним проходом колектора.
+        DoubleSummaryStatistics prices = MedicineQueries.priceStatistics(medicines);
+        this.validCount = (int) prices.getCount();
+        // getAverage() для порожнього набору повертає 0.0 — як і попередня реалізація.
+        this.averagePrice = prices.getAverage();
+        // min() повертає OptionalInt: порожній для порожнього набору, тоді 0, як раніше.
+        int minDays = medicines.stream()
+                .mapToInt(Medicine::getDaysToExpire)
+                .min()
+                .orElse(0);
+        int prescriptions = (int) medicines.stream()
+                .filter(Medicine::isPrescription)
+                .count();
+        this.expiryPrescription = new ExpiryPrescription(minDays, prescriptions);
     }
 
     /**
