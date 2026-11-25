@@ -1,6 +1,7 @@
 # Аптека — консольний звіт
 
-Лабораторна робота № 1 з курсу «Кросплатформні засоби програмування», варіант 11.
+Лабораторні роботи № 1–2 з курсу «Кросплатформні засоби програмування», варіант 11.
+Поточна версія — **1.1.0** (ЛР2). Звіти: [REPORT.md](REPORT.md) (ЛР2), [docs/REPORT-lab01.md](docs/REPORT-lab01.md) (ЛР1).
 Автор: Іваницький.
 
 ## Призначення
@@ -51,17 +52,17 @@ Windows (cmd або PowerShell):
 
 ```text
 mvnw.cmd verify
-java -jar target\lab01-1.0.0.jar --version
-java -jar target\lab01-1.0.0.jar
-java -jar target\lab01-1.0.0.jar --input data\input.csv --output out\report.txt
+java -jar target\lab01-1.1.0.jar --version
+java -jar target\lab01-1.1.0.jar
+java -jar target\lab01-1.1.0.jar --input data\input.csv --output out\report.txt
 ```
 
 macOS / Ubuntu:
 
 ```text
 ./mvnw verify
-java -jar target/lab01-1.0.0.jar --version
-java -jar target/lab01-1.0.0.jar
+java -jar target/lab01-1.1.0.jar --version
+java -jar target/lab01-1.1.0.jar
 ```
 
 `verify` компілює код, запускає тести JUnit 5, збирає виконуваний JAR і перевіряє байт-код
@@ -72,7 +73,7 @@ java -jar target/lab01-1.0.0.jar
 | Параметр          | Значення                                            |
 |-------------------|-----------------------------------------------------|
 | `--help`, `-h`    | довідка                                             |
-| `--version`       | версія та номер збірки (`1.0.0+local` або `1.0.0+42`) |
+| `--version`       | версія та номер збірки (`1.1.0+local` або `1.1.0+42`) |
 | `--input <файл>`  | вхідний CSV, типово `data/input.csv`                |
 | `--output <файл>` | файл звіту, типово `out/report.txt`                 |
 
@@ -85,7 +86,7 @@ java -jar target/lab01-1.0.0.jar
 
 ```text
 chcp 65001
-java -jar target\lab01-1.0.0.jar
+java -jar target\lab01-1.1.0.jar
 ```
 
 ## Приклад
@@ -109,20 +110,49 @@ java -jar target\lab01-1.0.0.jar
 Звіт збережено у файл: out/report.txt
 ```
 
+## Модель даних
+
+Кожен коректний рядок CSV стає об'єктом **`Medicine`** — незмінним класом-сутністю
+(`private final`-поля, без сеттерів). Створити некоректний препарат неможливо, бо
+інваріанти перевіряє конструктор:
+
+| Поле           | Інваріант конструктора                              |
+|----------------|-----------------------------------------------------|
+| `name`, `form` | не `null` (→ `NullPointerException`) і не порожні   |
+| `price`        | скінченне число (`NaN`, `Infinity` заборонені), ≥ 0 |
+| `daysToExpire` | ≥ 0                                                 |
+| `prescription` | будь-яке `boolean`                                  |
+
+`Medicine.fromCsv(line)` відповідає лише за **структуру рядка й формат полів** (5 полів,
+число з крапкою, ціле, `true`/`false`) і передає значення конструктору. Тому кожне правило
+записане в коді один раз.
+
+Показники 3 і 4 (найменший термін і кількість рецептурних) повертаються разом як
+record **`ExpiryPrescription(minDaysToExpire, prescriptionCount)`**.
+
+```java
+Medicine m = Medicine.fromCsv("Амоксицилін;капсули;128.90;180;true");
+m.getPrice();      // 128.9
+m.toString();      // Амоксицилін (капсули): 128.90 грн, 180 дн., за рецептом
+```
+
 ## Структура
 
 ```text
 src/main/java/ua/lpnu/kzp/pharmacy/
   Main.java                — аргументи командного рядка, запуск конвеєра
   FileReport.java          — читання/запис файлів через Path і UTF-8
-  RecordProcessor.java     — обхід рядків, збір помилок
-  MedicineLineParser.java  — розбір і перевірка одного рядка
-  ProcessingResult.java    — коректні записи + помилки
+  RecordProcessor.java     — обхід рядків, номер рядка в повідомленні про помилку
+  Medicine.java            — клас-сутність + fromCsv (ЛР2)
+  ExpiryPrescription.java  — record підсумку (ЛР2)
+  ProcessingResult.java    — коректні препарати + помилки
   PharmacyStatistics.java  — чотири показники варіанта
   ReportFormatter.java     — текст звіту (Locale.ROOT, %n)
   BuildInfo.java           — версія з version.properties
 src/test/java/...          — тести JUnit 5
+src/test/resources/lab01-baseline-report.txt — контрольний звіт ЛР1
 data/input.csv             — приклад вхідних даних
+docs/                      — звіти попередніх робіт
 ai/                        — ролі ШІ-агентів
 .github/                   — CI, шаблони Issue та PR
 ```
