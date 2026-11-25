@@ -1,7 +1,7 @@
 # Аптека — консольний звіт
 
-Лабораторні роботи № 1–4 з курсу «Кросплатформні засоби програмування», варіант 11.
-Поточна версія — **1.3.0** (ЛР4). Звіти: [REPORT.md](REPORT.md) (ЛР4), [docs/REPORT-lab03.md](docs/REPORT-lab03.md) (ЛР3), [docs/REPORT-lab02.md](docs/REPORT-lab02.md) (ЛР2), [docs/REPORT-lab01.md](docs/REPORT-lab01.md) (ЛР1).
+Лабораторні роботи № 1–5 з курсу «Кросплатформні засоби програмування», варіант 11.
+Поточна версія — **1.4.0** (ЛР5). Звіти: [REPORT.md](REPORT.md) (ЛР5), [docs/REPORT-lab04.md](docs/REPORT-lab04.md) (ЛР4), [docs/REPORT-lab03.md](docs/REPORT-lab03.md) (ЛР3), [docs/REPORT-lab02.md](docs/REPORT-lab02.md) (ЛР2), [docs/REPORT-lab01.md](docs/REPORT-lab01.md) (ЛР1).
 Автор: Іваницький.
 
 ## Призначення
@@ -52,17 +52,17 @@ Windows (cmd або PowerShell):
 
 ```text
 mvnw.cmd verify
-java -jar target\lab01-1.3.0.jar --version
-java -jar target\lab01-1.3.0.jar
-java -jar target\lab01-1.3.0.jar --input data\input.csv --output out\report.txt
+java -jar target\lab01-1.4.0.jar --version
+java -jar target\lab01-1.4.0.jar
+java -jar target\lab01-1.4.0.jar --input data\input.csv --output out\report.txt
 ```
 
 macOS / Ubuntu:
 
 ```text
 ./mvnw verify
-java -jar target/lab01-1.3.0.jar --version
-java -jar target/lab01-1.3.0.jar
+java -jar target/lab01-1.4.0.jar --version
+java -jar target/lab01-1.4.0.jar
 ```
 
 `verify` компілює код, запускає тести JUnit 5, збирає виконуваний JAR і перевіряє байт-код
@@ -73,7 +73,7 @@ java -jar target/lab01-1.3.0.jar
 | Параметр          | Значення                                            |
 |-------------------|-----------------------------------------------------|
 | `--help`, `-h`    | довідка                                             |
-| `--version`       | версія та номер збірки (`1.3.0+local` або `1.3.0+42`) |
+| `--version`       | версія та номер збірки (`1.4.0+local` або `1.4.0+42`) |
 | `--input <файл>`  | вхідний CSV, типово `data/input.csv`                |
 | `--output <файл>` | файл звіту, типово `out/report.txt`                 |
 
@@ -86,7 +86,7 @@ java -jar target/lab01-1.3.0.jar
 
 ```text
 chcp 65001
-java -jar target\lab01-1.3.0.jar
+java -jar target\lab01-1.4.0.jar
 ```
 
 ## Приклад
@@ -168,8 +168,38 @@ java -jar target\lab01-1.3.0.jar
 не змінюється, бо від нього залежить порівняння з контрольним звітом ЛР1.
 
 ```text
-java -jar target/lab01-1.3.0.jar --input data/pharmacy-full.csv --queries --find Назол
+java -jar target/lab01-1.4.0.jar --input data/pharmacy-full.csv --queries --find Назол
 ```
+
+## Збереження у файл (`--export`)
+
+Пакет `ua.lpnu.kzp.storage` — універсальна інфраструктура, яка нічого не знає про аптеку:
+
+- `Repository<T>` — параметризоване сховище (`add`, `all` → незмінний знімок, `find(Predicate<? super T>)`);
+- `@CsvColumn("назва")` — позначає поле для експорту (`RUNTIME`, `FIELD`);
+- `CsvExporter<T>` / `JsonExporter<T>` (спільний інтерфейс `Exporter<T>`) — читають анотовані поля
+  рефлексією. Стовпці впорядковані за Java-іменами полів, значення екрануються за RFC 4180;
+- `CsvParser` + `CsvImporter<T>` — документний розбір (кома й перенесення рядка в лапках), перевірка
+  заголовка й кількості полів;
+- `DataStorageException` — checked-виняток, первинна причина в `getCause()`.
+
+Предметний клас — record `MedicineRecord`: `name`, `form`, `price`, `expiresOn` (`LocalDate`),
+`prescription` (`MedicineKind`). Дата придатності обчислюється від `--date` + `daysToExpire`.
+
+```text
+java -jar target/lab01-1.4.0.jar --input data/pharmacy-full.csv --export out/medicines.csv --date 2026-11-25
+```
+
+```text
+придатність,форма,назва,рецепт,ціна
+2027-11-25,таблетки,Парацетамол,FREE,45.5
+2026-12-09,мазь,"Мазь ""Левомеколь"", 40 г",FREE,89.75
+2026-12-15,розчин,"Інсулін
+швидкої дії",PRESCRIPTION,640.0
+```
+
+Після запису файл читається назад, а відновлені записи порівнюються з початковими через `equals`.
+Приклад з комою, лапками й перенесенням рядка лежить у `data/medicines-sample.csv`.
 
 ## Структура
 
@@ -186,11 +216,15 @@ src/main/java/ua/lpnu/kzp/pharmacy/
   PharmacyStatistics.java  — чотири показники варіанта
   MedicineQueries.java     — запити Stream API та пошук Optional (ЛР4)
   ReportFormatter.java     — текст звіту, розділи --details/--queries/--find (Locale.ROOT, %n)
+  MedicineRecord.java      — запис для збереження з @CsvColumn (ЛР5)
+  MedicineArchive.java     — --export: експорт і перевірка round-trip (ЛР5)
   BuildInfo.java           — версія з version.properties
+src/main/java/ua/lpnu/kzp/storage/ — Repository, @CsvColumn, експортери, парсер, імпортер (ЛР5)
 src/test/java/...          — тести JUnit 5
 src/test/resources/lab01-baseline-report.txt — контрольний звіт ЛР1
 data/input.csv             — приклад вхідних даних (контрольний для звіту)
 data/pharmacy-full.csv     — контрольний набір для запитів ЛР4
+data/medicines-sample.csv  — приклад CSV-експорту з екрануванням (ЛР5)
 docs/                      — звіти попередніх робіт
 ai/                        — ролі ШІ-агентів
 .github/                   — CI, шаблони Issue та PR

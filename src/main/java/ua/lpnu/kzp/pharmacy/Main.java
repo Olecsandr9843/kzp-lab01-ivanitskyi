@@ -4,7 +4,11 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.util.List;
+import ua.lpnu.kzp.storage.DataStorageException;
+import ua.lpnu.kzp.storage.Repository;
 
 /**
  * Консольна програма «Аптека» (варіант 11): читає CSV із препаратами, перевіряє записи,
@@ -27,7 +31,7 @@ public final class Main {
     static final int EXIT_USAGE = 2;
 
     private static final String USAGE = """
-            Використання: java -jar lab01-1.3.0.jar [параметри]
+            Використання: java -jar lab01-1.4.0.jar [параметри]
 
             Параметри:
               --help              показати цю довідку
@@ -37,6 +41,8 @@ public final class Main {
               --details           додати перелік препаратів з оцінкою доступності
               --queries           додати результати запитів Stream API (фільтр, групування, топ-5…)
               --find <назва>      знайти препарат за назвою
+              --export <файл>     зберегти асортимент у CSV (або JSON, якщо файл .json)
+              --date <РРРР-ММ-ДД> опорна дата для --export (типово сьогодні)
 
             Формат рядка CSV (UTF-8, роздільник ;):
               name;form;price;daysToExpire;prescription
@@ -52,7 +58,8 @@ public final class Main {
      *
      * @param args аргументи командного рядка: {@code --help}, {@code --version},
      *             {@code --input <файл>}, {@code --output <файл>}, {@code --details},
-     *             {@code --queries}, {@code --find <назва>}
+     *             {@code --queries}, {@code --find <назва>}, {@code --export <файл>},
+     *             {@code --date <РРРР-ММ-ДД>}
      */
     public static void main(String[] args) {
         int exitCode = run(args, System.out, System.err);
@@ -83,6 +90,8 @@ public final class Main {
         boolean details = false;
         boolean queries = false;
         String find = null;
+        Path export = null;
+        LocalDate today = LocalDate.now();
         try {
             for (int i = 0; i < args.length; i++) {
                 switch (args[i]) {
@@ -95,6 +104,8 @@ public final class Main {
                     case "--details" -> details = true;
                     case "--queries" -> queries = true;
                     case "--find" -> find = requireValue(args, ++i, "--find", "назву препарату");
+                    case "--export" -> export = Path.of(requireValue(args, ++i, "--export", "шлях до файла"));
+                    case "--date" -> today = parseDate(requireValue(args, ++i, "--date", "дату РРРР-ММ-ДД"));
                     default -> throw new IllegalArgumentException("невідомий параметр " + args[i]);
                 }
             }
@@ -113,9 +124,12 @@ public final class Main {
         try {
             List<String> lines = FileReport.readLines(input);
             ProcessingResult result = RecordProcessor.process(lines);
-            PharmacyStatistics statistics = new PharmacyStatistics(result.validRecords());
+            // ЛР5: дані зберігаються в параметризованому сховищі, решта коду працює з його знімком.
+            Repository<Medicine> repository = new Repository<>();
+            repository.addAll(result.validRecords());
+            List<Medicine> medicines = repository.all();
+            PharmacyStatistics statistics = new PharmacyStatistics(medicines);
             String report = ReportFormatter.format(input.toString(), statistics, result.errors());
-            List<Medicine> medicines = result.validRecords();
             if (details) {
                 report += ReportFormatter.formatDetails(medicines);
             }
@@ -129,12 +143,31 @@ public final class Main {
             out.print(report);
             FileReport.writeReport(output, report);
             out.printf("Звіт збережено у файл: %s%n", output);
+            if (export != null) {
+                out.printf("%s%n", MedicineArchive.export(medicines, export, today));
+            }
             return EXIT_OK;
+        } catch (DataStorageException exception) {
+            // Повідомлення власного винятку + первинна причина, щоб не втратити деталі.
+            err.printf("Помилка збереження даних: %s%n", exception.getMessage());
+            if (exception.getCause() != null) {
+                err.printf("Причина: %s%n", exception.getCause());
+            }
+            return EXIT_IO_ERROR;
         } catch (IOException exception) {
             // MalformedInputException (підклас IOException) означає, що файл не в UTF-8.
             err.printf("Помилка вводу-виводу: %s (%s)%n", exception.getMessage(),
                     exception.getClass().getSimpleName());
             return EXIT_IO_ERROR;
+        }
+    }
+
+    /* Розбирає дату ISO; хибну дату перетворює на зрозуміле повідомлення, зберігаючи причину. */
+    private static LocalDate parseDate(String text) {
+        try {
+            return LocalDate.parse(text);
+        } catch (DateTimeException exception) {
+            throw new IllegalArgumentException("хибна дата «%s», очікується РРРР-ММ-ДД".formatted(text), exception);
         }
     }
 

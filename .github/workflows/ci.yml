@@ -52,6 +52,9 @@ jobs:
           java -jar target/lab01-*.jar --version
           java -Dstdout.encoding=UTF-8 -jar target/lab01-*.jar --input data/input.csv --output out/report.txt
           java -Dstdout.encoding=UTF-8 -jar target/lab01-*.jar --input data/pharmacy-full.csv --output out/queries.txt --details --queries
+          java -Dstdout.encoding=UTF-8 -jar target/lab01-*.jar --input data/pharmacy-full.csv --output out/r.txt --export out/medicines.csv --date 2026-11-25
+          java -Dstdout.encoding=UTF-8 -jar target/lab01-*.jar --input data/pharmacy-full.csv --output out/r.txt --export out/medicines.json --date 2026-11-25
+          head -n 3 out/medicines.csv
 
       # Кожна ОС отримує власний артефакт, щоб результати не перезаписувалися.
       - name: Upload JAR
