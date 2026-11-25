@@ -1,7 +1,9 @@
 package ua.lpnu.kzp.pharmacy;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /** Формує текст звіту, однаковий для консолі та файла. */
 public final class ReportFormatter {
@@ -37,5 +39,34 @@ public final class ReportFormatter {
             report.append(String.format(Locale.ROOT, "  %s%n", error));
         }
         return report.toString();
+    }
+
+    /**
+     * Будує розширений розділ звіту (параметр {@code --details}): кожен препарат із категорією
+     * та оцінкою доступності, кількість унікальних препаратів і середня оцінка.
+     *
+     * <p>Метод працює лише з базовим типом {@link Medicine}: оцінку рахує поліморфний виклик
+     * {@link Medicine#availabilityScore()}, підпис дає {@link MedicineKind#label()}. Новий
+     * підтип препарату не потребуватиме змін у цьому коді.
+     *
+     * @param medicines коректні препарати будь-яких підтипів
+     * @return текст розділу, кожен рядок завершується {@code %n}
+     */
+    public static String formatDetails(List<Medicine> medicines) {
+        StringBuilder details = new StringBuilder();
+        details.append(String.format(Locale.ROOT, "Асортимент:%n"));
+        int totalScore = 0;
+        for (Medicine medicine : medicines) {
+            int score = medicine.availabilityScore();
+            totalScore += score;
+            details.append(String.format(Locale.ROOT, "  %s — доступність %d/%d%n",
+                    medicine, score, Medicine.MAX_SCORE));
+        }
+        // HashSet покладається на equals/hashCode: однаковий препарат у кількох рядках рахується один раз.
+        Set<Medicine> unique = new HashSet<>(medicines);
+        double averageScore = medicines.isEmpty() ? 0.0 : (double) totalScore / medicines.size();
+        details.append(String.format(Locale.ROOT, "Унікальних препаратів: %d%n", unique.size()));
+        details.append(String.format(Locale.ROOT, "Середня оцінка доступності: %.2f%n", averageScore));
+        return details.toString();
     }
 }

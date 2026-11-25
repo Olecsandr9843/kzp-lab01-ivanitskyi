@@ -1,7 +1,7 @@
 # Аптека — консольний звіт
 
-Лабораторні роботи № 1–2 з курсу «Кросплатформні засоби програмування», варіант 11.
-Поточна версія — **1.1.0** (ЛР2). Звіти: [REPORT.md](REPORT.md) (ЛР2), [docs/REPORT-lab01.md](docs/REPORT-lab01.md) (ЛР1).
+Лабораторні роботи № 1–3 з курсу «Кросплатформні засоби програмування», варіант 11.
+Поточна версія — **1.2.0** (ЛР3). Звіти: [REPORT.md](REPORT.md) (ЛР3), [docs/REPORT-lab02.md](docs/REPORT-lab02.md) (ЛР2), [docs/REPORT-lab01.md](docs/REPORT-lab01.md) (ЛР1).
 Автор: Іваницький.
 
 ## Призначення
@@ -52,17 +52,17 @@ Windows (cmd або PowerShell):
 
 ```text
 mvnw.cmd verify
-java -jar target\lab01-1.1.0.jar --version
-java -jar target\lab01-1.1.0.jar
-java -jar target\lab01-1.1.0.jar --input data\input.csv --output out\report.txt
+java -jar target\lab01-1.2.0.jar --version
+java -jar target\lab01-1.2.0.jar
+java -jar target\lab01-1.2.0.jar --input data\input.csv --output out\report.txt
 ```
 
 macOS / Ubuntu:
 
 ```text
 ./mvnw verify
-java -jar target/lab01-1.1.0.jar --version
-java -jar target/lab01-1.1.0.jar
+java -jar target/lab01-1.2.0.jar --version
+java -jar target/lab01-1.2.0.jar
 ```
 
 `verify` компілює код, запускає тести JUnit 5, збирає виконуваний JAR і перевіряє байт-код
@@ -73,7 +73,7 @@ java -jar target/lab01-1.1.0.jar
 | Параметр          | Значення                                            |
 |-------------------|-----------------------------------------------------|
 | `--help`, `-h`    | довідка                                             |
-| `--version`       | версія та номер збірки (`1.1.0+local` або `1.1.0+42`) |
+| `--version`       | версія та номер збірки (`1.2.0+local` або `1.2.0+42`) |
 | `--input <файл>`  | вхідний CSV, типово `data/input.csv`                |
 | `--output <файл>` | файл звіту, типово `out/report.txt`                 |
 
@@ -86,7 +86,7 @@ java -jar target/lab01-1.1.0.jar
 
 ```text
 chcp 65001
-java -jar target\lab01-1.1.0.jar
+java -jar target\lab01-1.2.0.jar
 ```
 
 ## Приклад
@@ -112,28 +112,40 @@ java -jar target\lab01-1.1.0.jar
 
 ## Модель даних
 
-Кожен коректний рядок CSV стає об'єктом **`Medicine`** — незмінним класом-сутністю
-(`private final`-поля, без сеттерів). Створити некоректний препарат неможливо, бо
-інваріанти перевіряє конструктор:
+```text
+                 «sealed abstract» Medicine
+        name, form, price, daysToExpire, kind: MedicineKind
+        інваріанти · fromCsv · of · equals/hashCode · toString
+                abstract int availabilityScore()
+                   ┌──────────┴──────────┐
+     PrescriptionMedicine           FreeMedicine
+     max(10, 60 − штраф)       100 − штраф (− 20, якщо < 30 дн.)
+```
 
-| Поле           | Інваріант конструктора                              |
-|----------------|-----------------------------------------------------|
-| `name`, `form` | не `null` (→ `NullPointerException`) і не порожні   |
-| `price`        | скінченне число (`NaN`, `Infinity` заборонені), ≥ 0 |
-| `daysToExpire` | ≥ 0                                                 |
-| `prescription` | будь-яке `boolean`                                  |
+- **`Medicine`** — абстрактний `sealed` базовий тип. Тут усі спільні поля та інваріанти:
+  непорожні назва й форма, скінченна невід'ємна ціна, невід'ємний термін, категорія не `null`.
+  Підтипи їх не дублюють.
+- **`PrescriptionMedicine`** і **`FreeMedicine`** відрізняються поведінкою — оцінкою
+  доступності `availabilityScore()` від 0 до 100. Штраф за ціну — 1 бал за кожні повні 10 грн,
+  не більше 50. Препарат, термін якого спливає сьогодні, отримує 0.
+- **`enum MedicineKind`** — `PRESCRIPTION("за рецептом")`, `FREE("без рецепта")`. Дає підпис
+  для звіту й ознаку рецептурності.
+- **Рівність**: два препарати рівні, якщо мають однаковий підтип, назву та форму випуску.
+  Ціна й термін — властивості партії. `--details` рахує унікальні препарати через `HashSet`.
+- `Medicine.fromCsv` / `Medicine.of` — єдине місце, де вибирається підтип (за полем
+  `prescription`). Уся решта коду працює з `List<Medicine>`.
+- Показники 3 і 4 повертаються разом як record **`ExpiryPrescription`**.
 
-`Medicine.fromCsv(line)` відповідає лише за **структуру рядка й формат полів** (5 полів,
-число з крапкою, ціле, `true`/`false`) і передає значення конструктору. Тому кожне правило
-записане в коді один раз.
+Приклад `--details` для `data/input.csv`:
 
-Показники 3 і 4 (найменший термін і кількість рецептурних) повертаються разом як
-record **`ExpiryPrescription(minDaysToExpire, prescriptionCount)`**.
-
-```java
-Medicine m = Medicine.fromCsv("Амоксицилін;капсули;128.90;180;true");
-m.getPrice();      // 128.9
-m.toString();      // Амоксицилін (капсули): 128.90 грн, 180 дн., за рецептом
+```text
+Асортимент:
+  Парацетамол (таблетки): 45.50 грн, 365 дн., без рецепта — доступність 96/100
+  Амоксицилін (капсули): 128.90 грн, 180 дн., за рецептом — доступність 48/100
+  Ібупрофен (суспензія): 96.00 грн, 90 дн., без рецепта — доступність 91/100
+  Еналаприл (таблетки): 73.60 грн, 45 дн., за рецептом — доступність 53/100
+Унікальних препаратів: 4
+Середня оцінка доступності: 72.00
 ```
 
 ## Структура
@@ -143,11 +155,13 @@ src/main/java/ua/lpnu/kzp/pharmacy/
   Main.java                — аргументи командного рядка, запуск конвеєра
   FileReport.java          — читання/запис файлів через Path і UTF-8
   RecordProcessor.java     — обхід рядків, номер рядка в повідомленні про помилку
-  Medicine.java            — клас-сутність + fromCsv (ЛР2)
+  Medicine.java            — абстрактний sealed базовий тип + fromCsv (ЛР2–ЛР3)
+  PrescriptionMedicine.java, FreeMedicine.java — підтипи (ЛР3)
+  MedicineKind.java        — enum категорії відпуску (ЛР3)
   ExpiryPrescription.java  — record підсумку (ЛР2)
   ProcessingResult.java    — коректні препарати + помилки
   PharmacyStatistics.java  — чотири показники варіанта
-  ReportFormatter.java     — текст звіту (Locale.ROOT, %n)
+  ReportFormatter.java     — текст звіту та розділ --details (Locale.ROOT, %n)
   BuildInfo.java           — версія з version.properties
 src/test/java/...          — тести JUnit 5
 src/test/resources/lab01-baseline-report.txt — контрольний звіт ЛР1
