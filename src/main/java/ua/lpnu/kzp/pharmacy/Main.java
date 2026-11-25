@@ -24,13 +24,14 @@ public final class Main {
     static final int EXIT_USAGE = 2;
 
     private static final String USAGE = """
-            Використання: java -jar lab01-1.1.0.jar [параметри]
+            Використання: java -jar lab01-1.2.0.jar [параметри]
 
             Параметри:
               --help              показати цю довідку
               --version           показати версію програми та номер збірки
               --input <файл>      вхідний CSV (типово data/input.csv)
               --output <файл>     файл звіту (типово out/report.txt)
+              --details           додати перелік препаратів з оцінкою доступності
 
             Формат рядка CSV (UTF-8, роздільник ;):
               name;form;price;daysToExpire;prescription
@@ -45,7 +46,7 @@ public final class Main {
      * Точка входу до програми.
      *
      * @param args аргументи командного рядка: {@code --help}, {@code --version},
-     *             {@code --input <файл>}, {@code --output <файл>}
+     *             {@code --input <файл>}, {@code --output <файл>}, {@code --details}
      */
     public static void main(String[] args) {
         int exitCode = run(args, System.out, System.err);
@@ -73,6 +74,7 @@ public final class Main {
 
         Path input = DEFAULT_INPUT;
         Path output = DEFAULT_OUTPUT;
+        boolean details = false;
         try {
             for (int i = 0; i < args.length; i++) {
                 switch (args[i]) {
@@ -82,6 +84,7 @@ public final class Main {
                     }
                     case "--input" -> input = Path.of(requireValue(args, ++i, "--input"));
                     case "--output" -> output = Path.of(requireValue(args, ++i, "--output"));
+                    case "--details" -> details = true;
                     default -> throw new IllegalArgumentException("невідомий параметр " + args[i]);
                 }
             }
@@ -102,6 +105,9 @@ public final class Main {
             ProcessingResult result = RecordProcessor.process(lines);
             PharmacyStatistics statistics = new PharmacyStatistics(result.validRecords());
             String report = ReportFormatter.format(input.toString(), statistics, result.errors());
+            if (details) {
+                report += ReportFormatter.formatDetails(result.validRecords());
+            }
 
             out.print(report);
             FileReport.writeReport(output, report);
